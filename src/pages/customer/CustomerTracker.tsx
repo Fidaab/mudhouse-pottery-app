@@ -43,6 +43,10 @@ export function CustomerTracker() {
       const found = await searchPieces(code)
       setResults(found)
       setSearched(true)
+      // Remember the customer so we can show pickup notifications on home page
+      if (found.length > 0) {
+        localStorage.setItem('mudhouse_customer_id', code)
+      }
     } catch (err) {
       console.error('Search failed:', err)
     } finally {

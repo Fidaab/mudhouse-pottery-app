@@ -1,16 +1,70 @@
-import { CalendarDays, Palette, Clock, MapPin, Phone, Mail } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { CalendarDays, Palette, Clock, MapPin, Phone, Mail, Bell } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useLocation } from '../../context/LocationContext'
+import { searchPieces } from '../../lib/db'
+import type { DbPiece } from '../../lib/db'
 
 export function CustomerHome() {
   const { location, setLocation, locationName } = useLocation()
+  const [readyPieces, setReadyPieces] = useState<DbPiece[]>([])
+  const [savedLookup, setSavedLookup] = useState<string | null>(null)
+
+  // Check localStorage for saved customer identifier
+  useEffect(() => {
+    const stored = localStorage.getItem('mudhouse_customer_id')
+    if (stored) {
+      setSavedLookup(stored)
+    }
+  }, [])
+
+  // Check for ready pieces when we have a saved lookup
+  useEffect(() => {
+    if (!savedLookup) return
+    async function checkReady() {
+      try {
+        const pieces = await searchPieces(savedLookup!)
+        const ready = pieces.filter(p => p.status === 'ready')
+        setReadyPieces(ready)
+      } catch (err) {
+        console.error('Failed to check pieces:', err)
+      }
+    }
+    checkReady()
+    // Re-check every 60 seconds
+    const interval = setInterval(checkReady, 60000)
+    return () => clearInterval(interval)
+  }, [savedLookup])
 
   return (
     <div>
+      {/* Ready for pickup notification */}
+      {readyPieces.length > 0 && (
+        <Link to="/track" style={{ textDecoration: 'none' }}>
+          <div className="pickup-banner">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div className="pickup-bell">
+                <Bell size={20} />
+              </div>
+              <div>
+                <strong style={{ color: 'white', fontSize: '15px' }}>
+                  {readyPieces.length === 1
+                    ? 'Your piece is ready for pickup!'
+                    : `${readyPieces.length} pieces are ready for pickup!`}
+                </strong>
+                <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '13px', marginTop: '2px' }}>
+                  {readyPieces.map(p => p.name).join(', ')}
+                </p>
+              </div>
+            </div>
+          </div>
+        </Link>
+      )}
+
       {/* Hero with logo */}
       <div className="hero-header">
         <img
-          src="/mudhouse-logo.png"
+          src="/mudhouse-pottery-app/mudhouse-logo.png"
           alt="Mudhouse Pottery Studio"
           style={{ width: '180px', height: 'auto', marginBottom: '8px' }}
         />
