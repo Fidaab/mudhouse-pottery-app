@@ -16,11 +16,6 @@ function getStatusLabel(status: string): string {
   return labels[status] || status
 }
 
-function getStatusColor(status: string): string {
-  const colors: Record<string, string> = { painting: 'badge-info', drying: 'badge-warning', glazing: 'badge-warning', firing: 'badge-warning', ready: 'badge-success', 'picked-up': 'badge-neutral' }
-  return colors[status] || 'badge-info'
-}
-
 interface AdminDashboardProps {
   onLogout: () => void
 }
@@ -121,7 +116,7 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
       {/* Pieces tab */}
       {!loading && tab === 'pieces' && (
         <div>
-          <p className="text-muted mb-8">{pieces.length} pieces at {locationName}</p>
+          <p className="text-muted mb-8">{pieces.length} pieces at {locationName}. Tap status to change it.</p>
           {pieces.map(piece => (
             <div key={piece.id} className="card">
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -129,17 +124,36 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
                 <div style={{ flex: 1 }}>
                   <strong>{piece.name}</strong>
                   <p className="text-muted" style={{ fontSize: '12px' }}>{piece.customer_name} | {piece.order_code}</p>
-                  <span className={`badge ${getStatusColor(piece.status)}`} style={{ marginTop: '4px' }}>{getStatusLabel(piece.status)}</span>
                 </div>
                 {piece.status !== 'picked-up' && (
                   <button
                     onClick={() => handleAdvanceStatus(piece.id, piece.status)}
                     style={{ padding: '8px 12px', borderRadius: '6px', border: 'none', background: piece.status === 'ready' ? 'var(--success)' : 'var(--primary)', color: 'white', fontSize: '11px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
                   >
-                    {piece.status === 'ready' ? 'Mark Picked Up' : 'Advance \u2192'}
+                    {piece.status === 'ready' ? 'Picked Up' : 'Advance \u2192'}
                   </button>
                 )}
-                {piece.status === 'picked-up' && <span className="badge badge-neutral">Complete</span>}
+              </div>
+              {/* Status selector - allows setting back to any status */}
+              <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>Status:</span>
+                <select
+                  value={piece.status}
+                  onChange={async (e) => {
+                    const newStatus = e.target.value as DbPiece['status']
+                    try {
+                      await updatePieceStatus(piece.id, newStatus)
+                      setPieces(prev => prev.map(p => p.id === piece.id ? { ...p, status: newStatus } : p))
+                    } catch (err) {
+                      console.error('Failed to update status:', err)
+                    }
+                  }}
+                  style={{ padding: '6px 10px', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '13px', background: 'white', flex: 1 }}
+                >
+                  {statusOrder.map(s => (
+                    <option key={s} value={s}>{getStatusLabel(s)}</option>
+                  ))}
+                </select>
               </div>
             </div>
           ))}
