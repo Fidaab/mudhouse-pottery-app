@@ -1,24 +1,53 @@
 import { useState } from 'react'
-import { pieces, getStatusLabel, getStatusColor } from '../../data/store'
+import { searchPieces, type DbPiece } from '../../lib/db'
 import { PageHeader } from '../../components/PageHeader'
 import { Search } from 'lucide-react'
 
 const statusOrder = ['painting', 'drying', 'glazing', 'firing', 'ready', 'picked-up'] as const
 
+function getStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    painting: 'In Studio',
+    drying: 'Drying',
+    glazing: 'Being Glazed',
+    firing: 'In the Kiln',
+    ready: 'Ready for Pickup!',
+    'picked-up': 'Picked Up',
+  }
+  return labels[status] || status
+}
+
+function getStatusColor(status: string): string {
+  const colors: Record<string, string> = {
+    painting: 'badge-info',
+    drying: 'badge-warning',
+    glazing: 'badge-warning',
+    firing: 'badge-warning',
+    ready: 'badge-success',
+    'picked-up': 'badge-neutral',
+  }
+  return colors[status] || 'badge-info'
+}
+
 export function CustomerTracker() {
   const [lookupCode, setLookupCode] = useState('')
-  const [results, setResults] = useState<typeof pieces>([])
+  const [results, setResults] = useState<DbPiece[]>([])
   const [searched, setSearched] = useState(false)
+  const [loading, setLoading] = useState(false)
 
-  function handleSearch() {
-    const code = lookupCode.trim().toUpperCase()
+  async function handleSearch() {
+    const code = lookupCode.trim()
     if (!code) return
-    const found = pieces.filter(p =>
-      p.orderCode.toUpperCase().includes(code) ||
-      p.customerPhone.includes(lookupCode.trim())
-    )
-    setResults(found)
-    setSearched(true)
+    setLoading(true)
+    try {
+      const found = await searchPieces(code)
+      setResults(found)
+      setSearched(true)
+    } catch (err) {
+      console.error('Search failed:', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -46,6 +75,7 @@ export function CustomerTracker() {
           />
           <button
             onClick={handleSearch}
+            disabled={loading}
             style={{
               padding: '12px 16px',
               borderRadius: '8px',
@@ -53,6 +83,7 @@ export function CustomerTracker() {
               background: 'var(--accent)',
               color: 'white',
               cursor: 'pointer',
+              opacity: loading ? 0.7 : 1,
             }}
           >
             <Search size={20} />
@@ -60,7 +91,13 @@ export function CustomerTracker() {
         </div>
       </div>
 
-      {searched && results.length === 0 && (
+      {loading && (
+        <div className="card mt-16" style={{ textAlign: 'center' }}>
+          <p className="text-muted">Searching...</p>
+        </div>
+      )}
+
+      {searched && !loading && results.length === 0 && (
         <div className="card mt-16" style={{ textAlign: 'center' }}>
           <p style={{ fontSize: '32px', marginBottom: '8px' }}>🔍</p>
           <p className="text-muted">No pieces found. Double-check your order code and try again.</p>
@@ -79,10 +116,10 @@ export function CustomerTracker() {
                 <div style={{ flex: 1 }}>
                   <strong>{piece.name}</strong>
                   <p className="text-muted" style={{ fontSize: '13px' }}>
-                    Order: {piece.orderCode}
+                    Order: {piece.order_code}
                   </p>
                   <p className="text-muted" style={{ fontSize: '12px' }}>
-                    Dropped off: {piece.droppedOff}
+                    Dropped off: {piece.dropped_off}
                   </p>
                 </div>
                 <span className={`badge ${getStatusColor(piece.status)}`}>
@@ -90,7 +127,6 @@ export function CustomerTracker() {
                 </span>
               </div>
 
-              {/* Progress bar */}
               <div style={{ marginTop: '12px' }}>
                 <div style={{ display: 'flex', gap: '3px', marginBottom: '6px' }}>
                   {statusOrder.slice(0, 5).map(s => (
@@ -115,9 +151,9 @@ export function CustomerTracker() {
                   <span>Fired</span>
                   <span>Ready!</span>
                 </div>
-                {piece.status !== 'ready' && piece.status !== 'picked-up' && (
+                {piece.status !== 'ready' && piece.status !== 'picked-up' && piece.estimated_ready && (
                   <p style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'right', marginTop: '8px' }}>
-                    Estimated ready: {piece.estimatedReady}
+                    Estimated ready: {piece.estimated_ready}
                   </p>
                 )}
                 {piece.status === 'ready' && (

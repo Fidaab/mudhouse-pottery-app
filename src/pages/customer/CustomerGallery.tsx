@@ -1,19 +1,32 @@
-import { useState } from 'react'
-import { galleryItems } from '../../data/store'
+import { useState, useEffect } from 'react'
+import { getGallery, type DbGalleryItem } from '../../lib/db'
 import { PageHeader } from '../../components/PageHeader'
 
-const categories = ['All', ...new Set(galleryItems.map(i => i.category))]
-const difficulties = ['All', 'Easy', 'Medium', 'Advanced']
-
 export function CustomerGallery() {
+  const [items, setItems] = useState<DbGalleryItem[]>([])
   const [category, setCategory] = useState('All')
   const [difficulty, setDifficulty] = useState('All')
+  const [loading, setLoading] = useState(true)
 
-  const filtered = galleryItems.filter(item => {
+  useEffect(() => {
+    getGallery().then(data => {
+      setItems(data)
+      setLoading(false)
+    }).catch(() => setLoading(false))
+  }, [])
+
+  const categories = ['All', ...new Set(items.map(i => i.category))]
+  const difficulties = ['All', 'Easy', 'Medium', 'Advanced']
+
+  const filtered = items.filter(item => {
     if (category !== 'All' && item.category !== category) return false
     if (difficulty !== 'All' && item.difficulty !== difficulty) return false
     return true
   })
+
+  if (loading) {
+    return <div><PageHeader title="Pick Your Piece" /><p className="text-muted">Loading gallery...</p></div>
+  }
 
   return (
     <div>
@@ -22,7 +35,6 @@ export function CustomerGallery() {
         Browse our collection and get inspired. Prices range from $22 to $65.
       </p>
 
-      {/* Category filter */}
       <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px', marginBottom: '12px' }}>
         {categories.map(c => (
           <button
@@ -46,7 +58,6 @@ export function CustomerGallery() {
         ))}
       </div>
 
-      {/* Difficulty filter */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
         {difficulties.map(d => (
           <button
@@ -68,7 +79,6 @@ export function CustomerGallery() {
         ))}
       </div>
 
-      {/* Gallery grid */}
       <div className="grid-2">
         {filtered.map(item => (
           <div key={item.id} className="card" style={{ textAlign: 'center', padding: '16px 8px' }}>
@@ -82,7 +92,6 @@ export function CustomerGallery() {
         ))}
       </div>
 
-      {/* Bottom note */}
       <div className="info-banner mt-16">
         <p>
           We supply stamps, stencils, and support.<br />
