@@ -8,13 +8,15 @@ import { CustomerTracker } from './pages/customer/CustomerTracker'
 import { AdminLogin } from './pages/admin/AdminLogin'
 import { AdminDashboard } from './pages/admin/AdminDashboard'
 import { CalendarDays, Palette, Clock, Home as HomeIcon } from 'lucide-react'
+
+const BASE = import.meta.env.BASE_URL
 import './styles/app.css'
 
 export default function App() {
   const [adminLoggedIn, setAdminLoggedIn] = useState(false)
 
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={BASE}>
       <LocationProvider>
         <Routes>
           {/* Admin routes */}
